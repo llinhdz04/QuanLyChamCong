@@ -1,0 +1,12 @@
+@{
+    ViewData["Title"] = "Không có quyền truy cập";
+}
+
+<div class="empty-state" style="padding-top:80px">
+    <div class="empty-icon" style="font-size:3.5rem">🚫</div>
+    <h3 style="font-size:1.3rem;font-weight:800;margin:12px 0 6px">Không có quyền truy cập</h3>
+    <p>Bạn không có quyền xem trang này.</p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary mt-3">
+        🏠 Về trang chủ
+    </a>
+</div>

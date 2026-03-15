@@ -1,0 +1,72 @@
+@model ApplicationUser
+@{
+    ViewData["Title"] = "Thêm nhân viên";
+    Layout = "_AdminLayout";
+}
+
+<div style="max-width:620px">
+    <div class="mb-3">
+        <a asp-action="Users" class="btn btn-ghost btn-sm">← Quay lại danh sách</a>
+    </div>
+
+    <div class="card">
+        <div class="card-header-bar">
+            <h5>➕ Thêm nhân viên mới</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="CreateUser" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-3" style="display:none"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Mã nhân viên <span class="text-danger">*</span></label>
+                        <input asp-for="Id" class="form-control" placeholder="NV001" />
+                        <span asp-validation-for="Id" class="text-danger" style="font-size:.78rem"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+                        <input asp-for="UserName" class="form-control" placeholder="nguyenvana" />
+                        <span asp-validation-for="UserName" class="text-danger" style="font-size:.78rem"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Họ và tên</label>
+                        <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input asp-for="Email" class="form-control" placeholder="email@company.com" />
+                        <span asp-validation-for="Email" class="text-danger" style="font-size:.78rem"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                        <input asp-for="Password" type="password" class="form-control" placeholder="Mật khẩu" />
+                        <span asp-validation-for="Password" class="text-danger" style="font-size:.78rem"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Số điện thoại</label>
+                        <input asp-for="PhoneNumber" class="form-control" placeholder="0912345678" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Chức vụ</label>
+                        <input asp-for="Position" class="form-control" placeholder="Kỹ sư, Kế toán..." />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Ngày vào làm</label>
+                        <input asp-for="HireDate" type="date" class="form-control"
+                               value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">➕ Thêm nhân viên</button>
+                    <a asp-action="Users" class="btn btn-ghost">Huỷ</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

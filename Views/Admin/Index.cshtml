@@ -1,0 +1,137 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    Layout = "_AdminLayout";
+}
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue">👥</div>
+        <div class="stat-info">
+            <div class="stat-value">@Model.TotalEmployees</div>
+            <div class="stat-label">Tổng nhân viên</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+            <div class="stat-value">@Model.CheckedInToday</div>
+            <div class="stat-label">Check-in hôm nay</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">📋</div>
+        <div class="stat-info">
+            <div class="stat-value">@Model.PendingLeaves</div>
+            <div class="stat-label">Đơn nghỉ chờ duyệt</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">⏱</div>
+        <div class="stat-info">
+            <div class="stat-value">@Model.TotalHoursMonth.ToString("0")h</div>
+            <div class="stat-label">Tổng giờ tháng này</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>⏱ Chấm công hôm nay</h5>
+                <a asp-action="Users" class="btn btn-ghost btn-sm">Xem nhân viên</a>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.RecentAttendances.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>Chưa có ai check-in hôm nay</p>
+                    </div>
+                }
+                else
+                {
+                    <table class="table-modern w-100">
+                        <thead>
+                            <tr>
+                                <th>Nhân viên</th>
+                                <th>Giờ vào</th>
+                                <th>Giờ ra</th>
+                                <th>Tổng giờ</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in Model.RecentAttendances)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="user-chip">
+                                            <div class="av">@a.UserId.FirstOrDefault().ToString().ToUpper()</div>
+                                            <span class="name">@a.UserId</span>
+                                        </div>
+                                    </td>
+                                    <td>@(a.CheckInTime?.ToString("HH:mm") ?? "—")</td>
+                                    <td>@(a.CheckOutTime?.ToString("HH:mm") ?? "—")</td>
+                                    <td class="fw-bold">@((a.TotalHours ?? 0m).ToString("0.0"))h</td>
+                                    <td>
+                                        @if (a.CheckOutTime != null)
+                                        { <span class="badge-pill success">Hoàn thành</span> }
+                                        else
+                                        { <span class="badge-pill warning">Đang làm</span> }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>📋 Đơn nghỉ chờ duyệt</h5>
+                <a asp-controller="LeaveRequest" asp-action="All" class="btn btn-ghost btn-sm">Xem tất cả</a>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.RecentLeaves.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">✅</div>
+                        <p>Không có đơn chờ duyệt</p>
+                    </div>
+                }
+                else
+                {
+                    <table class="table-modern w-100">
+                        <thead>
+                            <tr>
+                                <th>Nhân viên</th>
+                                <th>Loại</th>
+                                <th>Từ ngày</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var l in Model.RecentLeaves)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@l.UserId</td>
+                                    <td><span class="badge-pill info">@(l.LeaveType ?? "—")</span></td>
+                                    <td>@l.StartDate.ToString("dd/MM")</td>
+                                    <td>
+                                        <a asp-controller="LeaveRequest" asp-action="All"
+                                           class="btn btn-primary btn-sm">Duyệt</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>

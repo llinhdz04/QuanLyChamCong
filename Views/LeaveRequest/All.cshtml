@@ -1,0 +1,168 @@
+@model List<LeaveRequest>
+@{
+    ViewData["Title"] = "Quản lý đơn nghỉ phép";
+    Layout = "_AdminLayout";
+
+    string search        = ViewBag.Search        ?? "";
+    string filterStatus  = ViewBag.FilterStatus   ?? "all";
+    string sortBy        = ViewBag.SortBy         ?? "startdate";
+    string sortDir       = ViewBag.SortDir        ?? "desc";
+    int    page          = ViewBag.Page           ?? 1;
+    int    totalPages    = ViewBag.TotalPages     ?? 1;
+    int    total         = ViewBag.Total          ?? 0;
+    int    countAll      = ViewBag.CountAll       ?? 0;
+    int    countPending  = ViewBag.CountPending   ?? 0;
+    int    countApproved = ViewBag.CountApproved  ?? 0;
+    int    countRejected = ViewBag.CountRejected  ?? 0;
+
+    string SortUrl(string col) {
+        string dir = (sortBy == col && sortDir == "asc") ? "desc" : "asc";
+        return $"?search={Uri.EscapeDataString(search)}&filterStatus={filterStatus}&sortBy={col}&sortDir={dir}&page=1";
+    }
+    string SortIcon(string col) => sortBy == col ? (sortDir == "asc" ? "↑" : "↓") : "⇅";
+    string TabUrl(string status) => $"?search={Uri.EscapeDataString(search)}&filterStatus={status}&sortBy={sortBy}&sortDir={sortDir}&page=1";
+}
+
+@* ── Search ────────────────────────────────────────────── *@
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="search" value="@search"
+                   class="form-control" style="max-width:300px"
+                   placeholder="🔍  Tìm nhân viên, loại nghỉ, lý do..." />
+            <input type="hidden" name="filterStatus" value="@filterStatus" />
+            <input type="hidden" name="sortBy"       value="@sortBy" />
+            <input type="hidden" name="sortDir"      value="@sortDir" />
+            <input type="hidden" name="page"         value="1" />
+            <button type="submit" class="btn btn-primary">Tìm</button>
+            @if (!string.IsNullOrEmpty(search))
+            { <a href="?filterStatus=@filterStatus&page=1" class="btn btn-ghost">✕ Xoá</a> }
+        </form>
+    </div>
+</div>
+
+@* ── Status tabs ──────────────────────────────────────── *@
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <a href="@TabUrl("all")"      class="btn btn-sm @(filterStatus=="all"?"btn-primary":"btn-ghost")">Tất cả <span class="badge-pill gray ms-1">@countAll</span></a>
+    <a href="@TabUrl("pending")"  class="btn btn-sm @(filterStatus=="pending"?"btn-primary":"btn-ghost")">⏳ Chờ duyệt <span class="badge-pill warning ms-1">@countPending</span></a>
+    <a href="@TabUrl("approved")" class="btn btn-sm @(filterStatus=="approved"?"btn-primary":"btn-ghost")">✅ Đã duyệt <span class="badge-pill success ms-1">@countApproved</span></a>
+    <a href="@TabUrl("rejected")" class="btn btn-sm @(filterStatus=="rejected"?"btn-primary":"btn-ghost")">❌ Từ chối <span class="badge-pill danger ms-1">@countRejected</span></a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-3">
+        ✅ @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>@(string.IsNullOrEmpty(search) ? "Chưa có đơn nghỉ nào" : $"Không tìm thấy \"{search}\"")</p>
+            </div>
+        }
+        else
+        {
+            <table class="table-modern w-100">
+                <thead>
+                    <tr>
+                        <th>
+                            <a href="@SortUrl("userid")" class="sort-header">
+                                Nhân viên <span class="sort-icon">@SortIcon("userid")</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("leavetype")" class="sort-header">
+                                Loại nghỉ <span class="sort-icon">@SortIcon("leavetype")</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("startdate")" class="sort-header">
+                                Từ ngày <span class="sort-icon">@SortIcon("startdate")</span>
+                            </a>
+                        </th>
+                        <th>Đến ngày</th>
+                        <th>Số ngày</th>
+                        <th>Lý do</th>
+                        <th>
+                            <a href="@SortUrl("status")" class="sort-header">
+                                Trạng thái <span class="sort-icon">@SortIcon("status")</span>
+                            </a>
+                        </th>
+                        <th style="text-align:right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        <tr>
+                            <td>
+                                <div class="user-chip">
+                                    <div class="av">@r.UserId.FirstOrDefault().ToString().ToUpper()</div>
+                                    <span class="name">@r.UserId</span>
+                                </div>
+                            </td>
+                            <td>@(r.LeaveType ?? "—")</td>
+                            <td>@r.StartDate.ToString("dd/MM/yyyy")</td>
+                            <td>@r.EndDate.ToString("dd/MM/yyyy")</td>
+                            <td>@((r.EndDate - r.StartDate).Days + 1) ngày</td>
+                            <td>
+                                <span title="@r.Reason" style="cursor:default">
+                                    @(r.Reason?.Length > 28 ? r.Reason.Substring(0,28)+"…" : r.Reason ?? "—")
+                                </span>
+                            </td>
+                            <td>
+                                @switch (r.Status) {
+                                    case "Approved": <span class="badge-pill success">✅ Đã duyệt</span> break;
+                                    case "Rejected": <span class="badge-pill danger">❌ Từ chối</span>  break;
+                                    default:         <span class="badge-pill warning">⏳ Chờ duyệt</span> break;
+                                }
+                            </td>
+                            <td style="text-align:right">
+                                @if (r.Status == "Pending")
+                                {
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        <form asp-action="Approve" asp-route-id="@r.LeaveRequestId" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-success btn-sm"
+                                                    onclick="return confirm('Duyệt đơn này?')">✅</button>
+                                        </form>
+                                        <form asp-action="Reject" asp-route-id="@r.LeaveRequestId" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-danger btn-sm"
+                                                    onclick="return confirm('Từ chối đơn này?')">❌</button>
+                                        </form>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" style="font-size:.75rem">
+                                        @(r.ApprovedBy ?? "—")<br/>
+                                        @(r.ApprovedDate?.ToString("dd/MM HH:mm") ?? "")
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <partial name="_Pagination" model='new PaginationModel {
+                CurrentPage = page,
+                TotalPages  = totalPages,
+                Total       = total,
+                BaseUrl     = Url.Action("All","LeaveRequest")!,
+                Search      = search,
+                SortBy      = sortBy,
+                SortDir     = sortDir,
+                Extra1Key   = "filterStatus",
+                Extra1Val   = filterStatus
+            }' />
+        }
+    </div>
+</div>

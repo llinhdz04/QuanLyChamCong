@@ -1,0 +1,233 @@
+@{
+    ViewData["Title"] = "Tổng hợp chấm công";
+    int     month        = ViewBag.Month        ?? DateTime.Today.Month;
+    int     year         = ViewBag.Year         ?? DateTime.Today.Year;
+    int     daysInMonth  = ViewBag.DaysInMonth  ?? 30;
+    int     workDays     = ViewBag.WorkDays     ?? 0;
+    int     completeDays = ViewBag.CompleteDays ?? 0;
+    int     lateDays     = ViewBag.LateDays     ?? 0;
+    decimal totalHours   = ViewBag.TotalHours   ?? 0m;
+    decimal avgHours     = ViewBag.AvgHours     ?? 0m;
+    decimal salary       = ViewBag.Salary       ?? 0m;
+    var calendarDays     = ViewBag.CalendarDays as IEnumerable<dynamic> ?? new List<dynamic>();
+    var trend            = ViewBag.Trend        as IEnumerable<dynamic> ?? new List<dynamic>();
+    var leaves           = ViewBag.Leaves       as List<QuanLyChamCong.Models.LeaveRequest> ?? new();
+
+    // Tính ngày đầu tháng là thứ mấy (0=CN)
+    int firstDow = (int)new DateTime(year, month, 1).DayOfWeek;
+}
+
+{{* ── Filter ───────────────────────────────────────────── *}}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h4 class="mb-0">📅 Tháng @month / @year</h4>
+    <form method="get" class="d-flex gap-2 align-items-center">
+        <select name="month" class="form-select form-select-sm" style="width:auto">
+            @for (int m = 1; m <= 12; m++)
+            {
+                if (m == month) { <option value="@m" selected>Tháng @m</option> }
+                else            { <option value="@m">Tháng @m</option> }
+            }
+        </select>
+        <select name="year" class="form-select form-select-sm" style="width:auto">
+            @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 2; y--)
+            {
+                if (y == year) { <option value="@y" selected>@y</option> }
+                else           { <option value="@y">@y</option> }
+            }
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Xem</button>
+    </form>
+</div>
+
+{{* ── Stats ────────────────────────────────────────────── *}}
+<div class="stats-grid mb-4" style="grid-template-columns:repeat(5,1fr)">
+    <div class="stat-card">
+        <div class="stat-icon blue">✅</div>
+        <div class="stat-info">
+            <div class="stat-value">@workDays</div>
+            <div class="stat-label">Ngày đi làm</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">🏁</div>
+        <div class="stat-info">
+            <div class="stat-value">@completeDays</div>
+            <div class="stat-label">Hoàn thành</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red">⏰</div>
+        <div class="stat-info">
+            <div class="stat-value">@lateDays</div>
+            <div class="stat-label">Đi trễ (sau 9h)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">⏱</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalHours.ToString("0.0")h</div>
+            <div class="stat-label">Tổng giờ làm</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">💰</div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:1rem">@salary.ToString("N0")₫</div>
+            <div class="stat-label">Lương tạm tính</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {{* ── Calendar ─────────────────────────────────────────── *}}
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>🗓 Lịch điểm danh</h5>
+                <div class="d-flex gap-2" style="font-size:.75rem">
+                    <span style="display:inline-flex;align-items:center;gap:4px">
+                        <span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block"></span>Hoàn thành
+                    </span>
+                    <span style="display:inline-flex;align-items:center;gap:4px">
+                        <span style="width:10px;height:10px;border-radius:50%;background:var(--warning);display:inline-block"></span>Đang làm
+                    </span>
+                    <span style="display:inline-flex;align-items:center;gap:4px">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#e5e7eb;display:inline-block"></span>Vắng
+                    </span>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div class="cal-grid">
+                    {{* Header thứ *}}
+                    @foreach (var dow in new[]{"CN","T2","T3","T4","T5","T6","T7"})
+                    {
+                        <div class="cal-header">@dow</div>
+                    }
+                    {{* Empty cells trước ngày 1 *}}
+                    @for (int i = 0; i < firstDow; i++)
+                    {
+                        <div class="cal-cell empty"></div>
+                    }
+                    {{* Các ngày *}}
+                    @foreach (var d in calendarDays)
+                    {
+                        bool isToday   = (int)d.Day == DateTime.Today.Day
+                                      && month == DateTime.Today.Month
+                                      && year  == DateTime.Today.Year;
+                        bool isFuture  = new DateTime(year, month, (int)d.Day) > DateTime.Today;
+                        string status  = (string)d.Status;
+                        string bgColor = status switch {
+                            "complete" => "var(--success)",
+                            "working"  => "var(--warning)",
+                            _          => isFuture ? "transparent" : "#f3f4f6"
+                        };
+                        string txtColor = status == "complete" || status == "working" ? "#fff" : "inherit";
+
+                        <div class="cal-cell @(isToday ? "today" : "") @(isFuture ? "future" : "")"
+                             style="background:@bgColor;color:@txtColor"
+                             title="@(d.Record != null ? $"{((DateTime)d.Record.CheckInTime).ToString("HH:mm")} — {(d.Record.CheckOutTime != null ? ((DateTime)d.Record.CheckOutTime).ToString("HH:mm") : "đang làm")}" : "")">
+                            <span class="cal-day-num">@d.Day</span>
+                            @if (d.Record != null && d.Record.TotalHours != null)
+                            {
+                                <span class="cal-hours">@((decimal)d.Record.TotalHours).ToString("0.0")h</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{* ── Sidebar: Trend + Nghỉ phép ───────────────────────── *}}
+    <div class="col-lg-4">
+        {{* Trend 6 tháng *}}
+        <div class="card mb-3">
+            <div class="card-header-bar">
+                <h5>📈 Xu hướng 6 tháng</h5>
+            </div>
+            <div class="card-body p-3">
+                @foreach (var t in trend)
+                {
+                    decimal pct = (decimal)t.Hours > 0 ? Math.Min(100m, (decimal)t.Hours / 200m * 100m) : 0m;
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between" style="font-size:.78rem;margin-bottom:3px">
+                            <span>@t.Label</span>
+                            <span class="text-muted">@((decimal)t.Hours).ToString("0.0")h · @((int)t.Days) ngày</span>
+                        </div>
+                        <div style="height:6px;background:#f1f5f9;border-radius:99px;overflow:hidden">
+                            <div style="height:100%;width:@pct.ToString("0")%;background:var(--accent);border-radius:99px;transition:width .3s"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        {{* Nghỉ phép tháng này *}}
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>🏖 Nghỉ phép tháng @month</h5>
+            </div>
+            <div class="card-body p-3">
+                @if (!leaves.Any())
+                {
+                    <div class="text-muted text-center py-2" style="font-size:.83rem">Không có đơn nào</div>
+                }
+                else
+                {
+                    @foreach (var l in leaves)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2"
+                             style="border-bottom:1px solid #f1f5f9;font-size:.82rem">
+                            <div>
+                                <div class="fw-bold">@(l.LeaveType ?? "Nghỉ phép")</div>
+                                <div class="text-muted">@l.StartDate.ToString("dd/MM") – @l.EndDate.ToString("dd/MM")</div>
+                            </div>
+                            @switch ((string)l.Status) {
+                                case "Approved": <span class="badge-pill success">✅</span> break;
+                                case "Rejected": <span class="badge-pill danger">❌</span> break;
+                                default:         <span class="badge-pill warning">⏳</span> break;
+                            }
+                        </div>
+                    }
+                }
+                <a asp-controller="LeaveRequest" asp-action="Create"
+                   class="btn btn-ghost btn-sm w-100 mt-1">+ Tạo đơn mới</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.cal-header {
+    text-align: center;
+    font-size: .7rem;
+    font-weight: 700;
+    color: var(--muted);
+    padding: 4px 0;
+}
+.cal-cell {
+    border-radius: 8px;
+    padding: 6px 4px;
+    text-align: center;
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: .78rem;
+    cursor: default;
+    border: 1px solid transparent;
+    transition: transform .1s;
+}
+.cal-cell:hover:not(.empty):not(.future) { transform: scale(1.05); }
+.cal-cell.today { border: 2px solid var(--accent) !important; }
+.cal-cell.future { opacity: .35; }
+.cal-cell.empty { background: transparent !important; border: none; }
+.cal-day-num { font-weight: 700; line-height: 1; }
+.cal-hours { font-size: .65rem; opacity: .85; margin-top: 2px; }
+</style>

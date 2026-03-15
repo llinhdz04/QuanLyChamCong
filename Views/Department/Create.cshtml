@@ -1,0 +1,44 @@
+@model Department
+@{
+    ViewData["Title"] = "Thêm phòng ban";
+    Layout = "_AdminLayout";
+}
+
+<div class="mb-3">
+    <a asp-action="Index" class="btn btn-ghost btn-sm">← Quay lại</a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>🏢 Thêm phòng ban mới</h5>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label">Tên phòng ban <span class="text-danger">*</span></label>
+                        <input type="text" name="DepartmentName" class="form-control"
+                               placeholder="VD: Phòng Kỹ thuật" required />
+                        @if (ViewData.ModelState["DepartmentName"]?.Errors.Any() == true)
+                        {
+                            <div class="text-danger" style="font-size:.8rem">
+                                @ViewData.ModelState["DepartmentName"]!.Errors[0].ErrorMessage
+                            </div>
+                        }
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Mô tả</label>
+                        <textarea name="Description" class="form-control" rows="3"
+                                  placeholder="Mô tả ngắn về phòng ban..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">💾 Lưu</button>
+                        <a asp-action="Index" class="btn btn-ghost">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

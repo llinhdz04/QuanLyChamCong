@@ -1,0 +1,218 @@
+@model List<Attendance>
+@{
+    ViewData["Title"] = "Giờ làm nhân viên";
+    Layout = "_AdminLayout";
+
+    var     user       = ViewBag.User      as ApplicationUser;
+    int     month      = ViewBag.Month     ?? DateTime.Today.Month;
+    int     year       = ViewBag.Year      ?? DateTime.Today.Year;
+    decimal totalHours = ViewBag.TotalHours ?? 0m;
+    int     workDays   = ViewBag.WorkDays  ?? 0;
+    string  sortBy     = ViewBag.SortBy    ?? "date";
+    string  sortDir    = ViewBag.SortDir   ?? "desc";
+    int     page       = ViewBag.Page      ?? 1;
+    int     totalPages = ViewBag.TotalPages ?? 1;
+    int     total      = ViewBag.Total     ?? 0;
+    decimal salary     = totalHours * 30000m;
+    string  uid        = user?.Id ?? "";
+
+    string SortUrl(string col) {
+        string dir = (sortBy == col && sortDir == "asc") ? "desc" : "asc";
+        return $"?id={uid}&month={month}&year={year}&sortBy={col}&sortDir={dir}&page=1";
+    }
+    string SortIcon(string col) => sortBy == col ? (sortDir == "asc" ? "↑" : "↓") : "⇅";
+}
+
+<div class="mb-3">
+    <a asp-action="Users" class="btn btn-ghost btn-sm">← Quay lại danh sách</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center p-4">
+                <div style="width:60px;height:60px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.4rem;margin:0 auto 12px">
+                    @((user?.FullName ?? user?.UserName ?? "?").FirstOrDefault().ToString().ToUpper())
+                </div>
+                <div style="font-weight:800;font-size:1rem">@(user?.FullName ?? user?.UserName)</div>
+                <div class="text-muted" style="font-size:.8rem">@(user?.Position ?? "Nhân viên")</div>
+                <div class="text-muted" style="font-size:.75rem;margin-top:4px">@user?.Email</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+            <div class="stat-card">
+                <div class="stat-icon blue">⏱</div>
+                <div class="stat-info">
+                    <div class="stat-value">@totalHours.ToString("0.0")h</div>
+                    <div class="stat-label">Tổng giờ làm</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">📅</div>
+                <div class="stat-info">
+                    <div class="stat-value">@workDays</div>
+                    <div class="stat-label">Ngày đi làm</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orange">💰</div>
+                <div class="stat-info">
+                    <div class="stat-value" style="font-size:1.1rem">@salary.ToString("N0")₫</div>
+                    <div class="stat-label">Lương tạm tính</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Month/Year filter -->
+        <div class="card mt-3">
+            <div class="card-body py-2">
+                <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+                    <input type="hidden" name="id" value="@uid" />
+                    <label class="form-label mb-0 fw-bold" style="font-size:.85rem">Xem tháng:</label>
+
+                    <select name="month" class="form-select form-select-sm" style="width:auto">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            if (m == month)
+                            {
+                                <option value="@m" selected>Tháng @m</option>
+                            }
+                            else
+                            {
+                                <option value="@m">Tháng @m</option>
+                            }
+                        }
+                    </select>
+
+                    <select name="year" class="form-select form-select-sm" style="width:auto">
+                        @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
+                        {
+                            if (y == year)
+                            {
+                                <option value="@y" selected>@y</option>
+                            }
+                            else
+                            {
+                                <option value="@y">@y</option>
+                            }
+                        }
+                    </select>
+
+                    <input type="hidden" name="sortBy"  value="@sortBy" />
+                    <input type="hidden" name="sortDir" value="@sortDir" />
+                    <input type="hidden" name="page"    value="1" />
+                    <button type="submit" class="btn btn-primary btn-sm">Lọc</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header-bar">
+        <h5>📊 Chi tiết – Tháng @month/@year</h5>
+        <span class="text-muted" style="font-size:.8rem">@total bản ghi</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>Không có dữ liệu chấm công tháng @month/@year</p>
+            </div>
+        }
+        else
+        {
+            <table class="table-modern w-100">
+                <thead>
+                    <tr>
+                        <th>
+                            <a href="@SortUrl("date")" class="sort-header">
+                                Ngày <span class="sort-icon">@SortIcon("date")</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("checkin")" class="sort-header">
+                                Giờ vào <span class="sort-icon">@SortIcon("checkin")</span>
+                            </a>
+                        </th>
+                        <th>Giờ ra</th>
+                        <th>
+                            <a href="@SortUrl("totalhours")" class="sort-header">
+                                Tổng giờ <span class="sort-icon">@SortIcon("totalhours")</span>
+                            </a>
+                        </th>
+                        <th>Lương ngày</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model)
+                    {
+                        <tr>
+                            <td class="fw-bold">@a.Date.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (a.CheckInTime.HasValue)
+                                {
+                                    <span class="badge-pill success">@a.CheckInTime.Value.ToString("HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (a.CheckOutTime.HasValue)
+                                {
+                                    <span class="badge-pill danger">@a.CheckOutTime.Value.ToString("HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="fw-bold">@((a.TotalHours ?? 0m).ToString("0.00"))h</td>
+                            <td>@(((a.TotalHours ?? 0m) * 30000m).ToString("N0"))₫</td>
+                            <td>
+                                @if (a.CheckOutTime != null)
+                                {
+                                    <span class="badge-pill success">✅ Hoàn thành</span>
+                                }
+                                else if (a.CheckInTime != null)
+                                {
+                                    <span class="badge-pill warning">⏳ Đang làm</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-pill gray">Vắng</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f8fafc;font-weight:700">
+                        <td colspan="3" class="text-end px-3 py-2">Tổng:</td>
+                        <td>@totalHours.ToString("0.0")h</td>
+                        <td style="color:var(--success)">@salary.ToString("N0")₫</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <partial name="_Pagination" model='new PaginationModel {
+                CurrentPage = page,
+                TotalPages  = totalPages,
+                Total       = total,
+                BaseUrl     = Url.Action("UserHours","Admin")!,
+                SortBy      = sortBy,
+                SortDir     = sortDir,
+                Extra1Key   = "id",    Extra1Val = uid,
+                Extra2Key   = "month", Extra2Val = month.ToString(),
+                Extra3Key   = "year",  Extra3Val = year.ToString()
+            }' />
+        }
+    </div>
+</div>

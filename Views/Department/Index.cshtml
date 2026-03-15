@@ -1,0 +1,127 @@
+@model List<Department>
+@{
+    ViewData["Title"] = "Quản lý phòng ban";
+    Layout = "_AdminLayout";
+
+    string search     = ViewBag.Search     ?? "";
+    string sortBy     = ViewBag.SortBy     ?? "name";
+    string sortDir    = ViewBag.SortDir    ?? "asc";
+    int    page       = ViewBag.Page       ?? 1;
+    int    totalPages = ViewBag.TotalPages ?? 1;
+    int    total      = ViewBag.Total      ?? 0;
+    var    empCount   = ViewBag.EmpCount   as Dictionary<int, int> ?? new();
+
+    string SortUrl(string col) {
+        string dir = (sortBy == col && sortDir == "asc") ? "desc" : "asc";
+        return $"?search={Uri.EscapeDataString(search)}&sortBy={col}&sortDir={dir}&page=1";
+    }
+    string SortIcon(string col) => sortBy == col ? (sortDir == "asc" ? "↑" : "↓") : "⇅";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted" style="font-size:.85rem"><strong>@total</strong> phòng ban</span>
+    <a asp-action="Create" class="btn btn-primary">➕ Thêm phòng ban</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-3">
+        ✅ @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <input type="text" name="search" value="@search"
+                   class="form-control" style="max-width:280px"
+                   placeholder="🔍  Tìm tên phòng ban..." />
+            <input type="hidden" name="sortBy"  value="@sortBy" />
+            <input type="hidden" name="sortDir" value="@sortDir" />
+            <input type="hidden" name="page"    value="1" />
+            <button type="submit" class="btn btn-primary">Tìm</button>
+            @if (!string.IsNullOrEmpty(search))
+            { <a href="?page=1" class="btn btn-ghost">✕</a> }
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">🏢</div>
+                <p>@(string.IsNullOrEmpty(search) ? "Chưa có phòng ban nào" : $"Không tìm thấy \"{search}\"")</p>
+                <a asp-action="Create" class="btn btn-primary mt-2">Thêm ngay</a>
+            </div>
+        }
+        else
+        {
+            <table class="table-modern w-100">
+                <thead>
+                    <tr>
+                        <th>
+                            <a href="@SortUrl("id")" class="sort-header">#<span class="sort-icon">@SortIcon("id")</span></a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("name")" class="sort-header">Tên phòng ban<span class="sort-icon">@SortIcon("name")</span></a>
+                        </th>
+                        <th>Mô tả</th>
+                        <th style="text-align:center">Nhân viên</th>
+                        <th style="text-align:right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model)
+                    {
+                        int count = empCount.ContainsKey(d.DepartmentId) ? empCount[d.DepartmentId] : 0;
+                        <tr>
+                            <td class="text-muted">@d.DepartmentId</td>
+                            <td>
+                                <div style="font-weight:700;display:flex;align-items:center;gap:8px">
+                                    <span style="width:32px;height:32px;background:var(--accent);border-radius:8px;
+                                                 display:inline-flex;align-items:center;justify-content:center;
+                                                 color:#fff;font-size:.75rem;font-weight:800">
+                                        @d.DepartmentName.Substring(0, Math.Min(2, d.DepartmentName.Length)).ToUpper()
+                                    </span>
+                                    @d.DepartmentName
+                                </div>
+                            </td>
+                            <td class="text-muted" style="font-size:.83rem">
+                                @(d.Description?.Length > 50 ? d.Description.Substring(0,50)+"…" : d.Description ?? "—")
+                            </td>
+                            <td style="text-align:center">
+                                <a asp-action="Details" asp-route-id="@d.DepartmentId" class="btn btn-ghost btn-sm">
+                                    👥 @count người
+                                </a>
+                            </td>
+                            <td style="text-align:right">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a asp-action="Edit" asp-route-id="@d.DepartmentId"
+                                       class="btn btn-ghost btn-sm">✏️</a>
+                                    <form asp-action="Delete" asp-route-id="@d.DepartmentId" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                onclick="return confirm('Xóa phòng ban @Html.Raw(d.DepartmentName)?')">🗑</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <partial name="_Pagination" model='new PaginationModel {
+                CurrentPage = page,
+                TotalPages  = totalPages,
+                Total       = total,
+                BaseUrl     = Url.Action("Index","Department")!,
+                Search      = search,
+                SortBy      = sortBy,
+                SortDir     = sortDir
+            }' />
+        }
+    </div>
+</div>

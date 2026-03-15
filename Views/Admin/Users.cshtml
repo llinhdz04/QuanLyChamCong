@@ -1,0 +1,155 @@
+@model List<ApplicationUser>
+@{
+    ViewData["Title"] = "Quản lý nhân viên";
+    Layout = "_AdminLayout";
+
+    string  search     = ViewBag.Search     ?? "";
+    string  sortBy     = ViewBag.SortBy     ?? "fullname";
+    string  sortDir    = ViewBag.SortDir    ?? "asc";
+    int     page       = ViewBag.Page       ?? 1;
+    int     totalPages = ViewBag.TotalPages ?? 1;
+    int     total      = ViewBag.Total      ?? 0;
+
+    string SortUrl(string col) {
+        string dir = (sortBy == col && sortDir == "asc") ? "desc" : "asc";
+        return $"?search={Uri.EscapeDataString(search)}&sortBy={col}&sortDir={dir}&page=1";
+    }
+    string SortIcon(string col) {
+        if (sortBy != col) return "⇅";
+        return sortDir == "asc" ? "↑" : "↓";
+    }
+
+    var colors = new[] { "", "green", "orange", "red", "purple" };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted" style="font-size:.85rem">
+        Tìm thấy <strong>@total</strong> nhân viên
+    </span>
+    <a asp-action="CreateUser" class="btn btn-primary">➕ Thêm nhân viên</a>
+</div>
+
+@* ── Search bar ───────────────────────────────────────── *@
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="search" value="@search"
+                   class="form-control" style="max-width:320px"
+                   placeholder="🔍  Tìm theo tên, username, email, chức vụ..." />
+            <input type="hidden" name="sortBy"  value="@sortBy" />
+            <input type="hidden" name="sortDir" value="@sortDir" />
+            <input type="hidden" name="page"    value="1" />
+            <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+            @if (!string.IsNullOrEmpty(search))
+            {
+                <a href="?page=1" class="btn btn-ghost">✕ Xoá lọc</a>
+            }
+        </form>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-3">
+        ✅ @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">👥</div>
+                <p>@(string.IsNullOrEmpty(search) ? "Chưa có nhân viên nào" : $"Không tìm thấy kết quả cho \"{search}\"")</p>
+            </div>
+        }
+        else
+        {
+            <table class="table-modern w-100">
+                <thead>
+                    <tr>
+                        <th>
+                            <a href="@SortUrl("fullname")" class="sort-header">
+                                Nhân viên <span class="sort-icon">@SortIcon("fullname")</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("username")" class="sort-header">
+                                Username <span class="sort-icon">@SortIcon("username")</span>
+                            </a>
+                        </th>
+                        <th>Chức vụ</th>
+                        <th>
+                            <a href="@SortUrl("hiredate")" class="sort-header">
+                                Vào làm <span class="sort-icon">@SortIcon("hiredate")</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("role")" class="sort-header">
+                                Vai trò <span class="sort-icon">@SortIcon("role")</span>
+                            </a>
+                        </th>
+                        <th style="text-align:center">Giờ làm</th>
+                        <th style="text-align:right">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int i = 0; }
+                    @foreach (var u in Model)
+                    {
+                        var colorClass = colors[i++ % colors.Length];
+                        var initial    = (u.FullName ?? u.UserName).FirstOrDefault().ToString().ToUpper();
+                        <tr>
+                            <td>
+                                <div class="user-chip">
+                                    <div class="av @colorClass">@initial</div>
+                                    <div>
+                                        <div class="name">@(u.FullName ?? u.UserName)</div>
+                                        <div class="email">@u.Email</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><code style="font-size:.78rem;color:var(--muted)">@u.UserName</code></td>
+                            <td>@(u.Position ?? "—")</td>
+                            <td>@u.HireDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (u.Role == "Admin")
+                                { <span class="badge-pill purple">Admin</span> }
+                                else
+                                { <span class="badge-pill info">Nhân viên</span> }
+                            </td>
+                            <td style="text-align:center">
+                                <a asp-action="UserHours" asp-route-id="@u.Id"
+                                   class="btn btn-ghost btn-sm">📊 Xem</a>
+                            </td>
+                            <td style="text-align:right">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a asp-action="EditUser" asp-route-id="@u.Id"
+                                       class="btn btn-ghost btn-sm">✏️</a>
+                                    <form asp-action="DeleteUser" asp-route-id="@u.Id" method="post" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                onclick="return confirm('Xóa nhân viên @Html.Raw(u.FullName ?? u.UserName)?')">🗑</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @* ── Pagination ─────────────────────────────────────── *@
+            <partial name="_Pagination" model='new PaginationModel {
+                CurrentPage = page,
+                TotalPages  = totalPages,
+                Total       = total,
+                BaseUrl     = Url.Action("Users", "Admin")!,
+                Search      = search,
+                SortBy      = sortBy,
+                SortDir     = sortDir
+            }' />
+        }
+    </div>
+</div>

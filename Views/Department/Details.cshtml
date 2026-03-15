@@ -1,0 +1,90 @@
+@model Department
+@{
+    ViewData["Title"] = "Chi tiết phòng ban";
+    Layout = "_AdminLayout";
+    var employees = ViewBag.Employees as List<ApplicationUser> ?? new();
+    var colors = new[] { "", "green", "orange", "red", "purple" };
+}
+
+<div class="mb-3">
+    <a asp-action="Index" class="btn btn-ghost btn-sm">← Quay lại danh sách</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body p-4">
+                <div style="width:64px;height:64px;background:var(--accent);border-radius:16px;
+                            display:flex;align-items:center;justify-content:center;
+                            color:#fff;font-weight:800;font-size:1.3rem;margin:0 auto 16px">
+                    @Model.DepartmentName.Substring(0, Math.Min(2, Model.DepartmentName.Length)).ToUpper()
+                </div>
+                <div style="font-size:1.2rem;font-weight:800">@Model.DepartmentName</div>
+                <div class="text-muted mt-2" style="font-size:.85rem">@(Model.Description ?? "Chưa có mô tả")</div>
+                <div class="mt-3">
+                    <span class="badge-pill info">👥 @employees.Count nhân viên</span>
+                </div>
+                <div class="mt-3 d-flex gap-2 justify-content-center">
+                    <a asp-action="Edit" asp-route-id="@Model.DepartmentId" class="btn btn-ghost btn-sm">✏️ Sửa</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>👥 Nhân viên thuộc phòng ban</h5>
+                <span class="text-muted" style="font-size:.8rem">@employees.Count người</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!employees.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">👤</div>
+                        <p>Chưa có nhân viên nào trong phòng ban này</p>
+                    </div>
+                }
+                else
+                {
+                    <table class="table-modern w-100">
+                        <thead>
+                            <tr>
+                                <th>Nhân viên</th>
+                                <th>Chức vụ</th>
+                                <th>Email</th>
+                                <th>Ngày vào</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int i = 0; }
+                            @foreach (var u in employees)
+                            {
+                                var c = colors[i++ % colors.Length];
+                                <tr>
+                                    <td>
+                                        <div class="user-chip">
+                                            <div class="av @c">@(u.FullName ?? u.UserName).FirstOrDefault().ToString().ToUpper()</div>
+                                            <div>
+                                                <div class="name">@(u.FullName ?? u.UserName)</div>
+                                                <div class="email">@u.UserName</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@(u.Position ?? "—")</td>
+                                    <td class="text-muted" style="font-size:.8rem">@u.Email</td>
+                                    <td class="text-muted" style="font-size:.8rem">@u.HireDate.ToString("dd/MM/yyyy")</td>
+                                    <td>
+                                        <a asp-controller="Admin" asp-action="EditUser" asp-route-id="@u.Id"
+                                           class="btn btn-ghost btn-sm">✏️</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>

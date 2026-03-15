@@ -1,0 +1,161 @@
+@model AttendanceViewModel
+@{
+    ViewData["Title"] = "Chấm công";
+}
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>⏱ Chấm công hôm nay</h5>
+                <span class="badge-pill info">@Model.TodayDate.ToString("dd/MM/yyyy")</span>
+            </div>
+            <div class="card-body text-center py-4">
+                <div id="clock" style="font-size:3rem;font-weight:800;color:var(--text);letter-spacing:-2px;font-family:'Nunito',sans-serif;line-height:1"></div>
+                <div class="text-muted mb-4 mt-1" style="font-size:.85rem">
+                    @Model.TodayDate.ToString("dddd, dd/MM/yyyy")
+                </div>
+
+                <div class="mb-4">
+                    @if (Model.HasCheckedOut)
+                    {
+                        <span class="badge-pill success" style="font-size:.9rem;padding:8px 20px">✅ Đã hoàn thành ca làm</span>
+                    }
+                    else if (Model.HasCheckedIn)
+                    {
+                        <span class="badge-pill warning" style="font-size:.9rem;padding:8px 20px">🟡 Đang làm việc</span>
+                    }
+                    else
+                    {
+                        <span class="badge-pill gray" style="font-size:.9rem;padding:8px 20px">⭕ Chưa check-in</span>
+                    }
+                </div>
+
+                <div class="d-flex gap-3 justify-content-center">
+                    <button id="btnCheckIn"
+                            class="btn btn-success"
+                            style="min-width:130px;padding:12px 20px;font-size:.95rem"
+                            @(Model.HasCheckedIn ? "disabled" : "")
+                            onclick="doCheckIn()">
+                        🟢 Check In
+                    </button>
+                    <button id="btnCheckOut"
+                            class="btn btn-danger"
+                            style="min-width:130px;padding:12px 20px;font-size:.95rem"
+                            @(!Model.HasCheckedIn || Model.HasCheckedOut ? "disabled" : "")
+                            onclick="doCheckOut()">
+                        🔴 Check Out
+                    </button>
+                </div>
+
+                <div id="msgBox" class="mt-3" style="min-height:28px;font-size:.85rem"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header-bar">
+                <h5>📋 Thông tin hôm nay</h5>
+            </div>
+            <div class="card-body d-flex flex-column gap-3">
+                <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc">
+                    <div>
+                        <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Nhân viên</div>
+                        <div style="font-size:1rem;font-weight:700">@Model.EmployeeName</div>
+                    </div>
+                    <span style="font-size:1.5rem">👤</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc">
+                    <div>
+                        <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Giờ vào</div>
+                        <div id="checkinDisplay" style="font-size:1.4rem;font-weight:800;color:var(--success)">
+                            @(Model.CheckInTime.HasValue ? Model.CheckInTime.Value.ToString("HH:mm:ss") : "--:--:--")
+                        </div>
+                    </div>
+                    <span style="font-size:1.5rem">🟢</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc">
+                    <div>
+                        <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Giờ ra</div>
+                        <div id="checkoutDisplay" style="font-size:1.4rem;font-weight:800;color:var(--danger)">
+                            @(Model.CheckOutTime.HasValue ? Model.CheckOutTime.Value.ToString("HH:mm:ss") : "--:--:--")
+                        </div>
+                    </div>
+                    <span style="font-size:1.5rem">🔴</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background:#f8fafc">
+                    <div>
+                        <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Tổng giờ</div>
+                        <div style="font-size:1.4rem;font-weight:800;color:var(--accent)">
+                            @Model.TotalWorkingHours.ToString("0.00") giờ
+                        </div>
+                    </div>
+                    <span style="font-size:1.5rem">⏱</span>
+                </div>
+                <a asp-action="History" class="btn btn-ghost mt-auto">
+                    📊 Xem lịch sử chấm công
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+@Html.AntiForgeryToken()
+<script>
+    // Đồng hồ realtime
+    function tick() {
+        const n = new Date();
+        document.getElementById('clock').textContent =
+            [n.getHours(), n.getMinutes(), n.getSeconds()]
+            .map(x => String(x).padStart(2,'0')).join(':');
+    }
+    tick(); setInterval(tick, 1000);
+
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+    function showMsg(text, ok) {
+        const b = document.getElementById('msgBox');
+        b.innerHTML = `<span class="badge-pill ${ok?'success':'danger'}" style="font-size:.82rem">${text}</span>`;
+    }
+
+    function doCheckIn() {
+        fetch('/Attendance/CheckIn', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showMsg('✅ Check-in thành công!', true);
+                document.getElementById('btnCheckIn').disabled = true;
+                document.getElementById('btnCheckOut').disabled = false;
+                const n = new Date();
+                document.getElementById('checkinDisplay').textContent =
+                    [n.getHours(), n.getMinutes(), n.getSeconds()].map(x => String(x).padStart(2,'0')).join(':');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showMsg('⚠ ' + (d.message || 'Lỗi check-in'), false);
+            }
+        });
+    }
+
+    function doCheckOut() {
+        fetch('/Attendance/CheckOut', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                showMsg('✅ Check-out thành công!', true);
+                document.getElementById('btnCheckOut').disabled = true;
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showMsg('⚠ ' + (d.message || 'Lỗi check-out'), false);
+            }
+        });
+    }
+</script>
+}

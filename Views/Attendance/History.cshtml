@@ -1,0 +1,175 @@
+@model List<Attendance>
+@{
+    ViewData["Title"] = "Lịch sử chấm công";
+
+    string  search       = ViewBag.Search       ?? "";
+    string  fromDate     = ViewBag.FromDate     ?? "";
+    string  toDate       = ViewBag.ToDate       ?? "";
+    string  filterStatus = ViewBag.FilterStatus  ?? "all";
+    string  sortBy       = ViewBag.SortBy        ?? "date";
+    string  sortDir      = ViewBag.SortDir       ?? "desc";
+    int     page         = ViewBag.Page          ?? 1;
+    int     totalPages   = ViewBag.TotalPages    ?? 1;
+    int     total        = ViewBag.Total         ?? 0;
+    decimal totalHours   = ViewBag.TotalHours    ?? 0m;
+    int     workDays     = ViewBag.WorkDays      ?? 0;
+    int     thisMonth    = ViewBag.ThisMonth     ?? 0;
+
+    string SortUrl(string col) {
+        string dir = (sortBy == col && sortDir == "asc") ? "desc" : "asc";
+        return $"?fromDate={fromDate}&toDate={toDate}&filterStatus={filterStatus}&sortBy={col}&sortDir={dir}&page=1";
+    }
+    string SortIcon(string col) => sortBy == col ? (sortDir == "asc" ? "↑" : "↓") : "⇅";
+    string TabUrl(string status) => $"?fromDate={fromDate}&toDate={toDate}&filterStatus={status}&sortBy={sortBy}&sortDir={sortDir}&page=1";
+}
+
+@* ── Summary ──────────────────────────────────────────── *@
+<div class="stats-grid mb-4" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card">
+        <div class="stat-icon blue">📅</div>
+        <div class="stat-info">
+            <div class="stat-value">@workDays</div>
+            <div class="stat-label">Tổng ngày đi làm</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">⏱</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalHours.ToString("0.0")h</div>
+            <div class="stat-label">Tổng giờ làm</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">🗓</div>
+        <div class="stat-info">
+            <div class="stat-value">@thisMonth</div>
+            <div class="stat-label">Ngày đi làm tháng này</div>
+        </div>
+    </div>
+</div>
+
+@* ── Search / Date filter ──────────────────────────────── *@
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="d-flex align-items-center gap-1" style="font-size:.82rem;color:var(--muted)">
+                <span>Từ</span>
+                <input type="date" name="fromDate" value="@fromDate"
+                       class="form-control form-control-sm" style="width:145px" />
+                <span>đến</span>
+                <input type="date" name="toDate" value="@toDate"
+                       class="form-control form-control-sm" style="width:145px" />
+            </div>
+            <input type="hidden" name="filterStatus" value="@filterStatus" />
+            <input type="hidden" name="sortBy"       value="@sortBy" />
+            <input type="hidden" name="sortDir"      value="@sortDir" />
+            <input type="hidden" name="page"         value="1" />
+            <button type="submit" class="btn btn-primary btn-sm">Lọc</button>
+            @if (!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate))
+            {
+                <a href="?filterStatus=@filterStatus&page=1" class="btn btn-ghost btn-sm">✕ Xoá lọc</a>
+            }
+        </form>
+    </div>
+</div>
+
+@* ── Status tabs ──────────────────────────────────────── *@
+<div class="d-flex gap-2 mb-3">
+    <a href="@TabUrl("all")"     class="btn btn-sm @(filterStatus=="all"?"btn-primary":"btn-ghost")">Tất cả</a>
+    <a href="@TabUrl("done")"    class="btn btn-sm @(filterStatus=="done"?"btn-primary":"btn-ghost")">✅ Hoàn thành</a>
+    <a href="@TabUrl("working")" class="btn btn-sm @(filterStatus=="working"?"btn-primary":"btn-ghost")">⏳ Đang làm</a>
+</div>
+
+<div class="card">
+    <div class="card-header-bar">
+        <h5>📋 Chi tiết lịch sử</h5>
+        <span class="text-muted" style="font-size:.8rem">@total bản ghi</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>Không tìm thấy bản ghi nào</p>
+                <a asp-action="Index" class="btn btn-primary mt-2">Đi chấm công</a>
+            </div>
+        }
+        else
+        {
+            <table class="table-modern w-100">
+                <thead>
+                    <tr>
+                        <th>
+                            <a href="@SortUrl("date")" class="sort-header">
+                                Ngày <span class="sort-icon">@SortIcon("date")</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("checkin")" class="sort-header">
+                                Giờ vào <span class="sort-icon">@SortIcon("checkin")</span>
+                            </a>
+                        </th>
+                        <th>Giờ ra</th>
+                        <th>
+                            <a href="@SortUrl("totalhours")" class="sort-header">
+                                Tổng giờ <span class="sort-icon">@SortIcon("totalhours")</span>
+                            </a>
+                        </th>
+                        <th>Lương tạm tính</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ decimal pageTotal = 0m; }
+                    @foreach (var a in Model)
+                    {
+                        pageTotal += a.TotalHours ?? 0m;
+                        <tr>
+                            <td class="fw-bold">@a.Date.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (a.CheckInTime.HasValue)
+                                { <span class="badge-pill success">@a.CheckInTime.Value.ToString("HH:mm")</span> }
+                                else { <span class="text-muted">—</span> }
+                            </td>
+                            <td>
+                                @if (a.CheckOutTime.HasValue)
+                                { <span class="badge-pill danger">@a.CheckOutTime.Value.ToString("HH:mm")</span> }
+                                else { <span class="text-muted">—</span> }
+                            </td>
+                            <td class="fw-bold">@((a.TotalHours ?? 0m).ToString("0.00"))h</td>
+                            <td>@(((a.TotalHours ?? 0m) * 30000m).ToString("N0"))₫</td>
+                            <td>
+                                @if (a.CheckOutTime != null)
+                                { <span class="badge-pill success">✅ Hoàn thành</span> }
+                                else if (a.CheckInTime != null)
+                                { <span class="badge-pill warning">⏳ Đang làm</span> }
+                                else
+                                { <span class="badge-pill gray">Vắng</span> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f8fafc;font-weight:700">
+                        <td colspan="3" class="text-end px-3 py-2">Trang này:</td>
+                        <td>@pageTotal.ToString("0.0")h</td>
+                        <td style="color:var(--success)">@((pageTotal * 30000m).ToString("N0"))₫</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <partial name="_Pagination" model='new PaginationModel {
+                CurrentPage = page,
+                TotalPages  = totalPages,
+                Total       = total,
+                BaseUrl     = Url.Action("History","Attendance")!,
+                SortBy      = sortBy,
+                SortDir     = sortDir,
+                Extra1Key   = "fromDate",     Extra1Val = fromDate,
+                Extra2Key   = "toDate",       Extra2Val = toDate,
+                Extra3Key   = "filterStatus", Extra3Val = filterStatus
+            }' />
+        }
+    </div>
+</div>

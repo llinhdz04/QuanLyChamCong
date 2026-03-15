@@ -1,0 +1,211 @@
+@model ApplicationUser
+@{
+    ViewData["Title"] = "Hồ sơ cá nhân";
+    decimal totalHours   = ViewBag.TotalHours   ?? 0m;
+    int     totalDays    = ViewBag.TotalDays    ?? 0;
+    int     thisMonth    = ViewBag.ThisMonth    ?? 0;
+    int     pendingLeave = ViewBag.PendingLeave ?? 0;
+    var     departments  = ViewBag.Departments  as List<QuanLyChamCong.Models.Department> ?? new();
+    string  deptName     = ViewBag.DepartmentName ?? "Chưa phân công";
+    string  initial      = (Model.FullName ?? Model.UserName).FirstOrDefault().ToString().ToUpper();
+}
+
+<div class="row g-4">
+
+    {{* ── Cột trái: Avatar + Stats ─────────────────────────── *}}
+    <div class="col-lg-4">
+        <div class="card text-center">
+            <div class="card-body p-4">
+                <div style="width:80px;height:80px;background:var(--accent);border-radius:50%;
+                            display:flex;align-items:center;justify-content:center;
+                            color:#fff;font-weight:800;font-size:2rem;margin:0 auto 16px">
+                    @initial
+                </div>
+                <div style="font-size:1.2rem;font-weight:800">@(Model.FullName ?? Model.UserName)</div>
+                <div class="text-muted mt-1">@(Model.Position ?? "Nhân viên")</div>
+                <div class="mt-1">
+                    @if (Model.Role == "Admin")
+                    { <span class="badge-pill purple">Admin</span> }
+                    else
+                    { <span class="badge-pill info">Nhân viên</span> }
+                </div>
+                <div class="text-muted mt-2" style="font-size:.8rem">
+                    📦 @deptName
+                </div>
+                <div class="text-muted mt-1" style="font-size:.78rem">
+                    📅 Vào làm: @Model.HireDate.ToString("dd/MM/yyyy")
+                </div>
+            </div>
+        </div>
+
+        {{* Stats *}}
+        <div class="row g-2 mt-1">
+            <div class="col-6">
+                <div class="card text-center p-3">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--accent)">@totalDays</div>
+                    <div class="text-muted" style="font-size:.75rem">Ngày đã làm</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card text-center p-3">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--success)">@totalHours.ToString("0")h</div>
+                    <div class="text-muted" style="font-size:.75rem">Tổng giờ làm</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card text-center p-3">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--warning)">@thisMonth</div>
+                    <div class="text-muted" style="font-size:.75rem">Ngày tháng này</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card text-center p-3">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--danger)">@pendingLeave</div>
+                    <div class="text-muted" style="font-size:.75rem">Đơn chờ duyệt</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{* ── Cột phải: Form chỉnh sửa + Đổi mật khẩu ─────────── *}}
+    <div class="col-lg-8">
+
+        {{* Alert messages *}}
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show mb-3">
+                ✅ @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["PwdSuccess"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show mb-3">
+                🔑 @TempData["PwdSuccess"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["PwdError"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show mb-3">
+                ⚠ @TempData["PwdError"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        {{* Thông tin cá nhân *}}
+        <div class="card mb-4">
+            <div class="card-header-bar">
+                <h5>👤 Thông tin cá nhân</h5>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Update" asp-controller="Profile" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Họ và tên</label>
+                            <input type="text" name="fullName" value="@Model.FullName"
+                                   class="form-control" placeholder="Họ và tên" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" value="@Model.Email"
+                                   class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Số điện thoại</label>
+                            <input type="text" name="phoneNumber" value="@Model.PhoneNumber"
+                                   class="form-control" placeholder="0xxx..." />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Chức vụ</label>
+                            <input type="text" name="position" value="@Model.Position"
+                                   class="form-control" placeholder="Chức vụ" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phòng ban</label>
+                            <select name="departmentId" class="form-select">
+                                <option value="">-- Chưa phân công --</option>
+                                @foreach (var d in departments)
+                                {
+                                    if (Model.DepartmentId == d.DepartmentId)
+                                    {
+                                        <option value="@d.DepartmentId" selected>@d.DepartmentName</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@d.DepartmentId">@d.DepartmentName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tên đăng nhập</label>
+                            <input type="text" value="@Model.UserName" class="form-control" disabled />
+                            <small class="text-muted">Không thể thay đổi tên đăng nhập</small>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">💾 Lưu thông tin</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{* Đổi mật khẩu *}}
+        <div class="card">
+            <div class="card-header-bar">
+                <h5>🔑 Đổi mật khẩu</h5>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="ChangePassword" asp-controller="Profile" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Mật khẩu hiện tại</label>
+                            <input type="password" name="currentPassword"
+                                   class="form-control" placeholder="Nhập mật khẩu hiện tại" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mật khẩu mới</label>
+                            <input type="password" name="newPassword" id="newPwd"
+                                   class="form-control" placeholder="Tối thiểu 6 ký tự" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Xác nhận mật khẩu mới</label>
+                            <input type="password" name="confirmPassword" id="confirmPwd"
+                                   class="form-control" placeholder="Nhập lại mật khẩu mới" required />
+                        </div>
+                        <div class="col-12">
+                            <div id="pwdMatch" style="font-size:.82rem;display:none"></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">🔒 Đổi mật khẩu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const np = document.getElementById('newPwd');
+    const cp = document.getElementById('confirmPwd');
+    const msg = document.getElementById('pwdMatch');
+    function checkMatch() {
+        if (!cp.value) { msg.style.display = 'none'; return; }
+        if (np.value === cp.value) {
+            msg.style.display = 'block';
+            msg.style.color   = 'var(--success)';
+            msg.textContent   = '✅ Mật khẩu khớp';
+        } else {
+            msg.style.display = 'block';
+            msg.style.color   = 'var(--danger)';
+            msg.textContent   = '❌ Mật khẩu không khớp';
+        }
+    }
+    np.addEventListener('input', checkMatch);
+    cp.addEventListener('input', checkMatch);
+</script>

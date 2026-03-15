@@ -1,0 +1,49 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<h2 class="mb-4">👋 Chào mừng bạn</h2>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card dash-card">
+            <div class="card-body">
+                <h5>📅 Đăng ký lịch làm</h5>
+                <p>Quản lý ca làm việc</p>
+                {{!-- FIX: Thêm asp-controller/asp-action thay vì href rỗng --}}
+                <a asp-controller="Schedule" asp-action="Index" class="btn btn-outline-primary">Mở</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card dash-card">
+            <div class="card-body">
+                <h5>⏱ Chấm công</h5>
+                <p>Check-in / Check-out</p>
+                <a asp-controller="Attendance" asp-action="Index" class="btn btn-outline-success">Mở</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card dash-card">
+            <div class="card-body">
+                <h5>📊 Báo cáo</h5>
+                <p>Thống kê giờ làm</p>
+                {{!-- FIX: Thêm asp-controller/asp-action thay vì href rỗng --}}
+                <a asp-controller="Report" asp-action="Index" class="btn btn-outline-warning">Mở</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card dash-card">
+            <div class="card-body">
+                <h5>📋 Nghỉ phép</h5>
+                <p>Xem & gửi đơn nghỉ</p>
+                <a asp-controller="LeaveRequest" asp-action="Index" class="btn btn-outline-secondary">Mở</a>
+            </div>
+        </div>
+    </div>
+</div>

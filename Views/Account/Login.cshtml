@@ -1,0 +1,51 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập";
+    Layout = "_Layout";
+}
+
+<div class="login-page">
+    <div class="login-card">
+
+        <div class="login-logo">
+            <div class="login-logo-icon">⏱</div>
+            <div>
+                <h2>QL Chấm Công</h2>
+                <p>Hệ thống quản lý nhân sự</p>
+            </div>
+        </div>
+
+        <h3>Đăng nhập</h3>
+        <p class="login-sub">Nhập thông tin tài khoản để tiếp tục</p>
+
+        <form asp-action="Login" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label class="form-label">Tên đăng nhập</label>
+                <input asp-for="UserName" class="form-control"
+                       placeholder="Nhập username..." autocomplete="username" />
+                <span asp-validation-for="UserName" class="text-danger" style="font-size:.78rem;color:#fca5a5!important"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Mật khẩu</label>
+                <input asp-for="Password" type="password" class="form-control"
+                       placeholder="Nhập mật khẩu..." autocomplete="current-password" />
+                <span asp-validation-for="Password" class="text-danger" style="font-size:.78rem;color:#fca5a5!important"></span>
+            </div>
+
+            <button type="submit" class="btn-login">Đăng nhập →</button>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert-error">⚠ @ViewBag.Error</div>
+            }
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

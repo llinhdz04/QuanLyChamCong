@@ -1,0 +1,182 @@
+@{
+    var userId   = Context.Session.GetString("UserId");
+    var userName = Context.Session.GetString("UserName") ?? "";
+    var fullName = Context.Session.GetString("FullName") ?? userName;
+    var role     = Context.Session.GetString("Role") ?? "";
+    bool isLogin = !string.IsNullOrEmpty(userId);
+
+    var path    = Context.Request.Path.Value?.ToLower() ?? "";
+    bool isPublicPage = path.Contains("/account/");
+    if (!isLogin && !isPublicPage)
+    {
+        Context.Response.Redirect("/Account/Login");
+    }
+    string initial = fullName.FirstOrDefault().ToString().ToUpper();
+    bool isAdmin = role == "Admin";
+
+    string Active(string segment) =>
+        path.Contains(segment.ToLower()) ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] – QL Chấm Công</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+@if (isLogin)
+{
+    <div class="dashboard">
+        <!-- ═══════ SIDEBAR ═══════ -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">⏰</div>
+                <span>QL Chấm Công</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">TỔNG QUAN</div>
+                <a asp-controller="Home" asp-action="Index" class="nav-item @Active("/home/")">
+                    <span class="nav-icon">🏠</span> Dashboard
+                </a>
+
+                <div class="nav-section">CHẤM CÔNG</div>
+                <a asp-controller="Attendance" asp-action="Index" class="nav-item @Active("/attendance/index")">
+                    <span class="nav-icon">⏱</span> Chấm công
+                </a>
+                <a asp-controller="Attendance" asp-action="History" class="nav-item @Active("/attendance/history")">
+                    <span class="nav-icon">📋</span> Lịch sử
+                </a>
+                <a asp-controller="AttendanceSummary" asp-action="Index" class="nav-item @Active("/attendancesummary")">
+                    <span class="nav-icon">📊</span> Tổng hợp tháng
+                </a>
+
+                <div class="nav-section">CÁ NHÂN</div>
+                <a asp-controller="Schedule" asp-action="Index" class="nav-item @Active("/schedule")">
+                    <span class="nav-icon">📅</span> Lịch làm
+                </a>
+                <a asp-controller="LeaveRequest" asp-action="Index" class="nav-item @Active("/leaverequest/index")">
+                    <span class="nav-icon">📝</span> Nghỉ phép
+                </a>
+                <a asp-controller="Salary" asp-action="Index" class="nav-item @Active("/salary")">
+                    <span class="nav-icon">💰</span> Bảng lương
+                </a>
+                <a asp-controller="Notification" asp-action="Index" class="nav-item @Active("/notification") notif-link">
+                    <span class="nav-icon">🔔</span> Thông báo
+                    <span class="notif-badge" id="notifBadge" style="display:none"></span>
+                </a>
+                <a asp-controller="Profile" asp-action="Index" class="nav-item @Active("/profile")">
+                    <span class="nav-icon">👤</span> Hồ sơ
+                </a>
+
+                @if (isAdmin)
+                {
+                    <div class="nav-section">QUẢN TRỊ</div>
+                    <a asp-controller="Admin" asp-action="Index" class="nav-item @Active("/admin/index")">
+                        <span class="nav-icon">🛡</span> Admin
+                    </a>
+                    <a asp-controller="Admin" asp-action="Users" class="nav-item @Active("/admin/users")">
+                        <span class="nav-icon">👥</span> Nhân viên
+                    </a>
+                    <a asp-controller="Admin" asp-action="Schedules" class="nav-item @Active("/admin/schedules")">
+                        <span class="nav-icon">🗂</span> Duyệt lịch
+                    </a>
+                    <a asp-controller="LeaveRequest" asp-action="All" class="nav-item @Active("/leaverequest/all")">
+                        <span class="nav-icon">📬</span> Duyệt đơn
+                    </a>
+                    <a asp-controller="Department" asp-action="Index" class="nav-item @Active("/department")">
+                        <span class="nav-icon">🏢</span> Phòng ban
+                    </a>
+                    <a asp-controller="Admin" asp-action="Report" class="nav-item @Active("/admin/report")">
+                        <span class="nav-icon">📈</span> Báo cáo
+                    </a>
+                }
+            </nav>
+
+            <a asp-controller="Account" asp-action="Logout" class="logout-btn">
+                <span>🚪</span> Đăng xuất
+            </a>
+        </aside>
+
+        <!-- ═══════ MAIN ═══════ -->
+        <div class="main-content">
+            <header class="topbar">
+                <div>
+                    <div style="font-weight:700;font-size:.95rem">@ViewData["Title"]</div>
+                    <div style="font-size:.75rem;color:var(--muted)">
+                        @System.Globalization.CultureInfo.GetCultureInfo("vi-VN")
+                            .DateTimeFormat.GetDayName(DateTime.Today.DayOfWeek).FirstOrDefault().ToString().ToUpper()
+                        @System.Globalization.CultureInfo.GetCultureInfo("vi-VN")
+                            .DateTimeFormat.GetDayName(DateTime.Today.DayOfWeek).Substring(1),
+                        @DateTime.Today.ToString("dd/MM/yyyy")
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <a asp-controller="Notification" asp-action="Index"
+                       style="position:relative;text-decoration:none;font-size:1.2rem" title="Thông báo">
+                        🔔
+                        <span id="topbarBadge" style="display:none;position:absolute;top:-4px;right:-4px;
+                              background:var(--danger);color:#fff;border-radius:99px;
+                              font-size:.55rem;min-width:14px;height:14px;
+                              display:none;align-items:center;justify-content:center;font-weight:700"></span>
+                    </a>
+                    <a asp-controller="Profile" asp-action="Index"
+                       style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit">
+                        <div style="width:32px;height:32px;background:var(--accent);border-radius:50%;
+                                    display:flex;align-items:center;justify-content:center;
+                                    color:#fff;font-weight:800;font-size:.85rem">
+                            @initial
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-weight:700;font-size:.82rem">@fullName</div>
+                            <div style="font-size:.7rem;color:var(--muted)">@(isAdmin ? "Admin" : "Nhân viên")</div>
+                        </div>
+                    </a>
+                </div>
+            </header>
+
+            <main style="padding:24px">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+}
+else
+{
+    @RenderBody()
+}
+
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js"></script>
+
+@if (isLogin)
+{
+    <script>
+        // Tự động lấy số thông báo mới mỗi 60 giây
+        async function loadNotifCount() {
+            try {
+                const res  = await fetch('/Notification/Count');
+                const data = await res.json();
+                const badge      = document.getElementById('notifBadge');
+                const topBadge   = document.getElementById('topbarBadge');
+                if (data.count > 0) {
+                    if (badge)    { badge.textContent = data.count; badge.style.display = 'inline-flex'; }
+                    if (topBadge) { topBadge.textContent = data.count; topBadge.style.display = 'inline-flex'; }
+                } else {
+                    if (badge)    badge.style.display = 'none';
+                    if (topBadge) topBadge.style.display = 'none';
+                }
+            } catch {}
+        }
+        loadNotifCount();
+        setInterval(loadNotifCount, 60000);
+    </script>
+}
+
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

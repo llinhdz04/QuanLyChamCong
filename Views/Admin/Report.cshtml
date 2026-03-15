@@ -1,0 +1,183 @@
+@model List<ReportVM>
+@{
+    ViewData["Title"] = "Báo cáo lương";
+    Layout = "_AdminLayout";
+
+    string  search     = ViewBag.Search     ?? "";
+    int     month      = ViewBag.Month      ?? DateTime.Today.Month;
+    int     year       = ViewBag.Year       ?? DateTime.Today.Year;
+    string  sortBy     = ViewBag.SortBy     ?? "totalhours";
+    string  sortDir    = ViewBag.SortDir    ?? "desc";
+    int     page       = ViewBag.Page       ?? 1;
+    int     totalPages = ViewBag.TotalPages ?? 1;
+    int     total      = ViewBag.Total      ?? 0;
+    decimal grandTotal = ViewBag.GrandTotal ?? 0m;
+    decimal totalHours = ViewBag.TotalHours ?? 0m;
+
+    string SortUrl(string col) {
+        string dir = (sortBy == col && sortDir == "asc") ? "desc" : "asc";
+        return $"?search={Uri.EscapeDataString(search)}&month={month}&year={year}&sortBy={col}&sortDir={dir}&page=1";
+    }
+    string SortIcon(string col) => sortBy == col ? (sortDir == "asc" ? "↑" : "↓") : "⇅";
+}
+
+<!-- Summary cards -->
+<div class="stats-grid mb-4" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card">
+        <div class="stat-icon blue">👥</div>
+        <div class="stat-info">
+            <div class="stat-value">@total</div>
+            <div class="stat-label">Nhân viên có giờ làm</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">⏱</div>
+        <div class="stat-info">
+            <div class="stat-value">@totalHours.ToString("0.0")h</div>
+            <div class="stat-label">Tổng giờ làm tháng @month</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">💰</div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:1.1rem">@grandTotal.ToString("N0")₫</div>
+            <div class="stat-label">Tổng lương phải trả</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="search" value="@search"
+                   class="form-control" style="max-width:240px"
+                   placeholder="🔍  Tên hoặc mã nhân viên..." />
+
+            <!-- FIX: dùng if/else thay vì ternary trong attribute -->
+            <select name="month" class="form-select form-select-sm" style="width:auto">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    if (m == month)
+                    {
+                        <option value="@m" selected>Tháng @m</option>
+                    }
+                    else
+                    {
+                        <option value="@m">Tháng @m</option>
+                    }
+                }
+            </select>
+
+            <select name="year" class="form-select form-select-sm" style="width:auto">
+                @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
+                {
+                    if (y == year)
+                    {
+                        <option value="@y" selected>@y</option>
+                    }
+                    else
+                    {
+                        <option value="@y">@y</option>
+                    }
+                }
+            </select>
+
+            <input type="hidden" name="sortBy"  value="@sortBy" />
+            <input type="hidden" name="sortDir" value="@sortDir" />
+            <input type="hidden" name="page"    value="1" />
+            <button type="submit" class="btn btn-primary">Xem báo cáo</button>
+            @if (!string.IsNullOrEmpty(search))
+            {
+                <a href="?month=@month&year=@year&sortBy=@sortBy&sortDir=@sortDir&page=1"
+                   class="btn btn-ghost">✕ Xoá lọc</a>
+            }
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header-bar">
+        <h5>📈 Chi tiết lương – Tháng @month/@year</h5>
+        <span class="text-muted" style="font-size:.8rem">Đơn giá: 30,000₫/giờ</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>Không có dữ liệu chấm công trong tháng @month/@year</p>
+            </div>
+        }
+        else
+        {
+            <table class="table-modern w-100">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>
+                            <a href="@SortUrl("fullname")" class="sort-header">
+                                Nhân viên <span class="sort-icon">@SortIcon("fullname")</span>
+                            </a>
+                        </th>
+                        <th>Mã NV</th>
+                        <th>
+                            <a href="@SortUrl("totalhours")" class="sort-header">
+                                Tổng giờ <span class="sort-icon">@SortIcon("totalhours")</span>
+                            </a>
+                        </th>
+                        <th>
+                            <a href="@SortUrl("salary")" class="sort-header">
+                                Lương tạm tính <span class="sort-icon">@SortIcon("salary")</span>
+                            </a>
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int idx = (page - 1) * 10 + 1; }
+                    @foreach (var r in Model)
+                    {
+                        <tr>
+                            <td class="text-muted">@(idx++)</td>
+                            <td>
+                                <div class="user-chip">
+                                    <div class="av">@((r.FullName ?? r.UserId).FirstOrDefault().ToString().ToUpper())</div>
+                                    <span class="name">@(r.FullName ?? r.UserId)</span>
+                                </div>
+                            </td>
+                            <td><code style="font-size:.78rem;color:var(--muted)">@r.UserId</code></td>
+                            <td class="fw-bold">@r.TotalHours.ToString("0.0")h</td>
+                            <td class="fw-bold" style="color:var(--success)">@r.Salary.ToString("N0")₫</td>
+                            <td>
+                                <a asp-action="UserHours" asp-route-id="@r.UserId"
+                                   asp-route-month="@month" asp-route-year="@year"
+                                   class="btn btn-ghost btn-sm">📊 Chi tiết</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f8fafc;font-weight:700">
+                        <td colspan="3" class="text-end px-3 py-2">Tổng cộng:</td>
+                        <td>@totalHours.ToString("0.0")h</td>
+                        <td style="color:var(--success)">@grandTotal.ToString("N0")₫</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <partial name="_Pagination" model='new PaginationModel {
+                CurrentPage = page,
+                TotalPages  = totalPages,
+                Total       = total,
+                BaseUrl     = Url.Action("Report","Admin")!,
+                Search      = search,
+                SortBy      = sortBy,
+                SortDir     = sortDir,
+                Extra1Key   = "month", Extra1Val = month.ToString(),
+                Extra2Key   = "year",  Extra2Val = year.ToString()
+            }' />
+        }
+    </div>
+</div>

@@ -1,0 +1,90 @@
+@model LeaveRequest
+@{
+    ViewData["Title"] = "Tạo đơn nghỉ phép";
+}
+
+<div style="max-width:580px;margin:0 auto">
+    <div class="card">
+        <div class="card-header-bar">
+            <h5>📝 Tạo đơn nghỉ phép mới</h5>
+            <a asp-action="Index" class="btn btn-ghost btn-sm">← Quay lại</a>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="mb-3">
+                    <label class="form-label">Loại nghỉ phép <span class="text-danger">*</span></label>
+                    <select asp-for="LeaveType" class="form-select" required>
+                        <option value="">-- Chọn loại nghỉ --</option>
+                        <option value="Nghỉ phép năm">🏖️ Nghỉ phép năm</option>
+                        <option value="Nghỉ ốm">🤒 Nghỉ ốm</option>
+                        <option value="Nghỉ việc riêng">🏠 Nghỉ việc riêng</option>
+                        <option value="Nghỉ thai sản">👶 Nghỉ thai sản</option>
+                        <option value="Nghỉ không lương">💸 Nghỉ không lương</option>
+                        <option value="Khác">📌 Khác</option>
+                    </select>
+                    <span asp-validation-for="LeaveType" class="text-danger" style="font-size:.78rem"></span>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col">
+                        <label class="form-label">Từ ngày <span class="text-danger">*</span></label>
+                        <input asp-for="StartDate" type="date" class="form-control"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                        <span asp-validation-for="StartDate" class="text-danger" style="font-size:.78rem"></span>
+                    </div>
+                    <div class="col">
+                        <label class="form-label">Đến ngày <span class="text-danger">*</span></label>
+                        <input asp-for="EndDate" type="date" class="form-control"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                        <span asp-validation-for="EndDate" class="text-danger" style="font-size:.78rem"></span>
+                    </div>
+                </div>
+
+                <div id="dayCount" class="mb-3 p-2 rounded-3 text-center" style="background:rgba(99,102,241,.08);color:var(--accent);font-weight:700;font-size:.88rem;display:none">
+                    📅 Số ngày nghỉ: <span id="dayText"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Lý do</label>
+                    <textarea asp-for="Reason" class="form-control" rows="3"
+                              placeholder="Mô tả lý do nghỉ phép..."></textarea>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary flex-fill">📤 Gửi đơn</button>
+                    <a asp-action="Index" class="btn btn-ghost">Huỷ</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+    const s = document.getElementById('StartDate');
+    const e = document.getElementById('EndDate');
+    const box = document.getElementById('dayCount');
+    const txt = document.getElementById('dayText');
+
+    function calc() {
+        if (!s.value || !e.value) { box.style.display='none'; return; }
+        const diff = (new Date(e.value) - new Date(s.value)) / 86400000 + 1;
+        if (diff > 0) {
+            txt.textContent = diff + ' ngày';
+            box.style.display = 'block';
+        } else {
+            box.style.display = 'none';
+        }
+    }
+
+    s.addEventListener('change', () => {
+        e.min = s.value;
+        if (e.value && e.value < s.value) e.value = s.value;
+        calc();
+    });
+    e.addEventListener('change', calc);
+</script>
+}
