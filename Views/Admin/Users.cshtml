@@ -22,18 +22,25 @@
     var colors = new[] { "", "green", "orange", "red", "purple" };
 }
 
+@* Thanh tiêu đề + nút *@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <span class="text-muted" style="font-size:.85rem">
-        Tìm thấy <strong>@total</strong> nhân viên
+        Tìm thấy <strong id="totalCount">@total</strong> nhân viên
     </span>
-    <a asp-action="CreateUser" class="btn btn-primary">➕ Thêm nhân viên</a>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary"
+                onclick="document.getElementById('createModal').style.display='flex'">
+            ⚡ Thêm nhanh (AJAX)
+        </button>
+        <a asp-action="CreateUser" class="btn btn-ghost">➕ Thêm thường</a>
+    </div>
 </div>
 
-@* ── Search bar ───────────────────────────────────────── *@
+@* Search bar (giữ form cũ để fallback, thêm id cho AJAX) *@
 <div class="card mb-3">
     <div class="card-body py-2">
         <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
-            <input type="text" name="search" value="@search"
+            <input type="text" id="ajaxSearchInput" name="search" value="@search"
                    class="form-control" style="max-width:320px"
                    placeholder="🔍  Tìm theo tên, username, email, chức vụ..." />
             <input type="hidden" name="sortBy"  value="@sortBy" />
@@ -56,13 +63,14 @@
     </div>
 }
 
+@* Bảng nhân viên *@
 <div class="card">
     <div class="card-body p-0">
-        @if (!Model.Any())
+        @if (!Model.Any() && string.IsNullOrEmpty(search))
         {
-            <div class="empty-state">
+            <div class="empty-state" id="emptyState">
                 <div class="empty-icon">👥</div>
-                <p>@(string.IsNullOrEmpty(search) ? "Chưa có nhân viên nào" : $"Không tìm thấy kết quả cho \"{search}\"")</p>
+                <p>Chưa có nhân viên nào</p>
             </div>
         }
         else
@@ -95,7 +103,7 @@
                         <th style="text-align:right">Thao tác</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="userTableBody">
                     @{ int i = 0; }
                     @foreach (var u in Model)
                     {
@@ -128,11 +136,11 @@
                                 <div class="d-flex gap-1 justify-content-end">
                                     <a asp-action="EditUser" asp-route-id="@u.Id"
                                        class="btn btn-ghost btn-sm">✏️</a>
-                                    <form asp-action="DeleteUser" asp-route-id="@u.Id" method="post" style="display:inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Xóa nhân viên @Html.Raw(u.FullName ?? u.UserName)?')">🗑</button>
-                                    </form>
+                                    @{ var _dn = (u.FullName ?? u.UserName).Replace("'",""); }
+                                    <button class="btn btn-danger btn-sm"
+                                            onclick="deleteUserAjax('@u.Id','@_dn')">
+                                        🗑
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -140,7 +148,8 @@
                 </tbody>
             </table>
 
-            @* ── Pagination ─────────────────────────────────────── *@
+            <div id="ajaxPagination" class="d-flex gap-1 justify-content-center mt-3 mb-3 flex-wrap"></div>
+
             <partial name="_Pagination" model='new PaginationModel {
                 CurrentPage = page,
                 TotalPages  = totalPages,
@@ -153,3 +162,237 @@
         }
     </div>
 </div>
+
+@* MODAL - Them nhan vien nhanh bang AJAX *@
+@Html.AntiForgeryToken()
+<div id="createModal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+            z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:16px;padding:28px;
+                width:460px;max-width:95%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:1.1rem;font-weight:800;margin-bottom:16px">
+            ⚡ Thêm nhân viên nhanh (AJAX)
+        </div>
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label">Tên đăng nhập *</label>
+                <input id="aj_username" class="form-control" placeholder="username" />
+            </div>
+            <div class="col-6">
+                <label class="form-label">Email *</label>
+                <input id="aj_email" type="email" class="form-control" placeholder="email@@..." />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Mật khẩu *</label>
+                <input id="aj_password" type="password" class="form-control" placeholder="Tối thiểu 6 ký tự" />
+            </div>
+            <div class="col-6">
+                <label class="form-label">Họ và tên</label>
+                <input id="aj_fullname" class="form-control" placeholder="Họ và tên" />
+            </div>
+            <div class="col-6">
+                <label class="form-label">Chức vụ</label>
+                <input id="aj_position" class="form-control" placeholder="Chức vụ" />
+            </div>
+        </div>
+        <div id="aj_error"
+             style="color:var(--danger);font-size:.83rem;margin-top:8px;display:none"></div>
+        <div class="d-flex gap-2 mt-4">
+            <button id="btnCreateAjax" class="btn btn-primary">💾 Lưu</button>
+            <button onclick="document.getElementById('createModal').style.display='none'"
+                    class="btn btn-ghost">Hủy</button>
+        </div>
+    </div>
+</div>
+
+@* SCRIPT - Toan bo AJAX logic *@
+<script>
+// ── Biến trạng thái ────────────────────────────────────────
+let ajaxPage   = 1;
+let ajaxSearch = "@search";
+let searchTimer;
+
+// 1. XmlHttpRequest – Render bảng
+function loadUsersXHR(search = "") {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", `/Admin/GetUsersJson?search=${encodeURIComponent(search)}`, true);
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            const users = JSON.parse(xhr.responseText);
+            renderTable(users);
+            document.getElementById("totalCount").textContent = users.length;
+        }
+    };
+    xhr.send();
+}
+
+function renderTable(users) {
+    const tbody = document.getElementById("userTableBody");
+    if (!users.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+            Không tìm thấy nhân viên nào</td></tr>`;
+        return;
+    }
+    const colors = ["", "green", "orange", "red", "purple"];
+    tbody.innerHTML = users.map((u, idx) => {
+        const initial = (u.fullName || u.userName)[0].toUpperCase();
+        const color   = colors[idx % colors.length];
+        const badge   = u.role === "Admin"
+            ? `<span class="badge-pill purple">Admin</span>`
+            : `<span class="badge-pill info">Nhân viên</span>`;
+        const safeName = (u.fullName || u.userName).replace(/'/g, "\\'");
+        return `<tr>
+            <td>
+                <div class="user-chip">
+                    <div class="av ${color}">${initial}</div>
+                    <div>
+                        <div class="name">${u.fullName || u.userName}</div>
+                        <div class="email">${u.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td><code style="font-size:.78rem;color:var(--muted)">${u.userName}</code></td>
+            <td>${u.position || "—"}</td>
+            <td>${badge}</td>
+            <td style="text-align:center">
+                <a href="/Admin/UserHours/${u.id}" class="btn btn-ghost btn-sm">📊 Xem</a>
+            </td>
+            <td style="text-align:right">
+                <div class="d-flex gap-1 justify-content-end">
+                    <a href="/Admin/EditUser/${u.id}" class="btn btn-ghost btn-sm">✏️</a>
+                    <button class="btn btn-danger btn-sm"
+                            onclick="deleteUserAjax('${u.id}','${safeName}')">🗑</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join("");
+}
+
+
+// 2a. jQuery $.ajax – Delete
+function deleteUserAjax(id, name) {
+    if (!confirm(`Xóa nhân viên "${name}"?`)) return;
+    $.ajax({
+        url  : "/Admin/DeleteUserAjax",
+        type : "POST",
+        data : {
+            id: id,
+            __RequestVerificationToken:
+                $('input[name="__RequestVerificationToken"]').first().val()
+        },
+        success: function (res) {
+            if (res.success) {
+                loadPage(ajaxPage, ajaxSearch);
+            } else {
+                alert("❌ " + res.message);
+            }
+        },
+        error: function () { alert("❌ Lỗi kết nối server"); }
+    });
+}
+
+
+// 2b. jQuery $.ajax – Create
+document.getElementById("btnCreateAjax").addEventListener("click", function () {
+    const errEl = document.getElementById("aj_error");
+    errEl.style.display = "none";
+
+    const username = document.getElementById("aj_username").value.trim();
+    const email    = document.getElementById("aj_email").value.trim();
+    const password = document.getElementById("aj_password").value;
+
+    if (!username || !email || !password) {
+        errEl.style.display = "block";
+        errEl.textContent   = "⚠ Vui lòng điền đầy đủ Tên đăng nhập, Email và Mật khẩu";
+        return;
+    }
+
+    $.ajax({
+        url  : "/Admin/CreateUserAjax",
+        type : "POST",
+        data : {
+            userName : username,
+            email    : email,
+            password : password,
+            fullName : document.getElementById("aj_fullname").value,
+            position : document.getElementById("aj_position").value,
+            role2    : "User",
+            __RequestVerificationToken:
+                $('input[name="__RequestVerificationToken"]').first().val()
+        },
+        success: function (res) {
+            if (res.success) {
+                document.getElementById("createModal").style.display = "none";
+                // Reset form
+                ["aj_username","aj_email","aj_password","aj_fullname","aj_position"]
+                    .forEach(id => document.getElementById(id).value = "");
+                loadPage(1, ajaxSearch); // Về trang 1 để thấy nhân viên mới
+            } else {
+                errEl.style.display = "block";
+                errEl.textContent   = "❌ " + res.message;
+            }
+        },
+        error: function () {
+            errEl.style.display = "block";
+            errEl.textContent   = "❌ Lỗi kết nối server";
+        }
+    });
+});
+
+// Đóng modal khi click bên ngoài
+document.getElementById("createModal").addEventListener("click", function (e) {
+    if (e.target === this) this.style.display = "none";
+});
+
+// 3. fetch() – Pagination AJAX (Skip/Take)
+
+function loadPage(page, search = "") {
+    ajaxPage   = page;
+    ajaxSearch = search;
+
+    fetch(`/Admin/GetUsersPage?page=${page}&search=${encodeURIComponent(search)}`)
+        .then(r => r.json())
+        .then(data => {
+            renderTable(data.items);
+            renderPagination(data.page, data.totalPages);
+            document.getElementById("totalCount").textContent = data.total;
+        })
+        .catch(() => console.warn("AJAX loadPage failed"));
+}
+
+function renderPagination(page, totalPages) {
+    const c = document.getElementById("ajaxPagination");
+    if (totalPages <= 1) { c.innerHTML = ""; return; }
+
+    let html = "";
+    if (page > 1)
+        html += `<button class="btn btn-ghost btn-sm"
+                         onclick="loadPage(${page - 1},'${ajaxSearch}')">← Trước</button>`;
+
+    const from = Math.max(1, page - 2);
+    const to   = Math.min(totalPages, page + 2);
+    for (let i = from; i <= to; i++) {
+        html += `<button class="btn btn-sm ${i === page ? "btn-primary" : "btn-ghost"}"
+                         onclick="loadPage(${i},'${ajaxSearch}')">${i}</button>`;
+    }
+
+    if (page < totalPages)
+        html += `<button class="btn btn-ghost btn-sm"
+                         onclick="loadPage(${page + 1},'${ajaxSearch}')">Sau →</button>`;
+
+    c.innerHTML = html;
+}
+
+// 4. fetch() – AJAX Search realtime
+document.getElementById("ajaxSearchInput").addEventListener("input", function () {
+    clearTimeout(searchTimer);
+    const keyword = this.value;
+    searchTimer = setTimeout(() => {
+        loadPage(1, keyword);
+    }, 400);
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    loadPage(@(page), "@(search)");
+});
+</script>

@@ -1,21 +1,21 @@
 @{
     ViewData["Title"] = "Bảng lương cá nhân";
-    int     month      = ViewBag.Month      ?? DateTime.Today.Month;
-    int     year       = ViewBag.Year       ?? DateTime.Today.Year;
+    int month = ViewBag.Month ?? DateTime.Today.Month;
+    int year = ViewBag.Year ?? DateTime.Today.Year;
     decimal totalHours = ViewBag.TotalHours ?? 0m;
-    decimal salary     = ViewBag.Salary     ?? 0m;
+    decimal salary = ViewBag.Salary ?? 0m;
     decimal prevSalary = ViewBag.PrevSalary ?? 0m;
-    decimal prevHours  = ViewBag.PrevHours  ?? 0m;
-    int     workDays   = ViewBag.WorkDays   ?? 0;
-    var     records    = ViewBag.Records    as List<QuanLyChamCong.Models.Attendance> ?? new();
+    decimal prevHours = ViewBag.PrevHours ?? 0m;
+    int workDays = ViewBag.WorkDays ?? 0;
+    var records = ViewBag.Records as List<QuanLyChamCong.Models.Attendance> ?? new();
 
     var history = ViewBag.SalaryHistory as IEnumerable<dynamic>;
-    decimal diff    = salary - prevSalary;
-    bool    isUp    = diff >= 0;
-    string  diffStr = (isUp ? "+" : "") + diff.ToString("N0") + "₫";
+    decimal diff = salary - prevSalary;
+    bool isUp = diff >= 0;
+    string diffStr = (isUp ? "+" : "") + diff.ToString("N0") + "₫";
 }
 
-{{* ── Month/Year filter ────────────────────────────────── *}}
+@* - Month/Year filter - *@
 <div class="card mb-4">
     <div class="card-body py-2">
         <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
@@ -23,15 +23,27 @@
             <select name="month" class="form-select form-select-sm" style="width:auto">
                 @for (int m = 1; m <= 12; m++)
                 {
-                    if (m == month) { <option value="@m" selected>Tháng @m</option> }
-                    else            { <option value="@m">Tháng @m</option> }
+                    if (m == month)
+                    {
+                        <option value="@m" selected>Tháng @m</option>
+                    }
+                    else
+                    {
+                        <option value="@m">Tháng @m</option>
+                    }
                 }
             </select>
             <select name="year" class="form-select form-select-sm" style="width:auto">
                 @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
                 {
-                    if (y == year) { <option value="@y" selected>@y</option> }
-                    else           { <option value="@y">@y</option> }
+                    if (y == year)
+                    {
+                        <option value="@y" selected>@y</option>
+                    }
+                    else
+                    {
+                        <option value="@y">@y</option>
+                    }
                 }
             </select>
             <button type="submit" class="btn btn-primary btn-sm">Xem</button>
@@ -39,7 +51,7 @@
     </div>
 </div>
 
-{{* ── Summary cards ────────────────────────────────────── *}}
+@* - Summary cards - *@
 <div class="stats-grid mb-4" style="grid-template-columns:repeat(4,1fr)">
     <div class="stat-card">
         <div class="stat-icon blue">📅</div>
@@ -74,7 +86,7 @@
 </div>
 
 <div class="row g-4">
-    {{* ── Bảng chi tiết ────────────────────────────────────── *}}
+    @* - Bảng chi tiết - *@
     <div class="col-lg-7">
         <div class="card">
             <div class="card-header-bar">
@@ -102,7 +114,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @{ decimal pageTotal = 0m; }
+                            @{
+                                decimal pageTotal = 0m;
+                            }
                             @foreach (var a in records)
                             {
                                 pageTotal += a.TotalHours ?? 0m;
@@ -110,13 +124,25 @@
                                     <td class="fw-bold">@a.Date.ToString("dd/MM")</td>
                                     <td>
                                         @if (a.CheckInTime.HasValue)
-                                        { <span class="badge-pill success">@a.CheckInTime.Value.ToString("HH:mm")</span> }
-                                        else { <span class="text-muted">—</span> }
+                                        {
+                                            <span class="badge-pill success">@a.CheckInTime.Value.ToString("HH:mm")</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="text-muted">—</span>
+                                        }
                                     </td>
                                     <td>
                                         @if (a.CheckOutTime.HasValue)
-                                        { <span class="badge-pill danger">@a.CheckOutTime.Value.ToString("HH:mm")</span> }
-                                        else { <span class="text-muted">—</span> }
+                                        {
+                                            <span class="badge-pill danger">@a.CheckOutTime.Value.ToString("HH:mm")</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="text-muted">—</span>
+                                        }
                                     </td>
                                     <td>@((a.TotalHours ?? 0m).ToString("0.0"))h</td>
                                     <td style="color:var(--success)">@(((a.TotalHours ?? 0m) * 30000m).ToString("N0"))₫</td>
@@ -136,7 +162,7 @@
         </div>
     </div>
 
-    {{* ── Lịch sử 12 tháng ──────────────────────────────────── *}}
+    @* - Lịch sử 12 tháng - *@
     <div class="col-lg-5">
         <div class="card">
             <div class="card-header-bar">
@@ -161,7 +187,9 @@
                                     <td>
                                         @h.Label
                                         @if (isCurrent)
-                                        { <span class="badge-pill info ms-1" style="font-size:.65rem">hiện tại</span> }
+                                        {
+                                            <span class="badge-pill info ms-1" style="font-size:.65rem">hiện tại</span>
+                                        }
                                     </td>
                                     <td>@((decimal)h.Hours).ToString("0.0")h</td>
                                     <td style="color:var(--success)">@((decimal)h.Salary).ToString("N0")₫</td>
@@ -173,7 +201,7 @@
             </div>
         </div>
 
-        {{* Tóm tắt so sánh *}}
+        @* Tóm tắt so sánh *@
         <div class="card mt-3">
             <div class="card-body p-3">
                 <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">📌 So sánh tháng trước</div>

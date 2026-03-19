@@ -1,18 +1,18 @@
 @model ApplicationUser
 @{
     ViewData["Title"] = "Hồ sơ cá nhân";
-    decimal totalHours   = ViewBag.TotalHours   ?? 0m;
-    int     totalDays    = ViewBag.TotalDays    ?? 0;
-    int     thisMonth    = ViewBag.ThisMonth    ?? 0;
-    int     pendingLeave = ViewBag.PendingLeave ?? 0;
-    var     departments  = ViewBag.Departments  as List<QuanLyChamCong.Models.Department> ?? new();
-    string  deptName     = ViewBag.DepartmentName ?? "Chưa phân công";
-    string  initial      = (Model.FullName ?? Model.UserName).FirstOrDefault().ToString().ToUpper();
+    decimal totalHours = ViewBag.TotalHours ?? 0m;
+    int totalDays = ViewBag.TotalDays ?? 0;
+    int thisMonth = ViewBag.ThisMonth ?? 0;
+    int pendingLeave = ViewBag.PendingLeave ?? 0;
+    var departments = ViewBag.Departments as List<QuanLyChamCong.Models.Department> ?? new();
+    string deptName = ViewBag.DepartmentName ?? "Chưa phân công";
+    string initial = (Model.FullName ?? Model.UserName).FirstOrDefault().ToString().ToUpper();
 }
 
 <div class="row g-4">
 
-    {{* ── Cột trái: Avatar + Stats ─────────────────────────── *}}
+    @* - Cột trái: Avatar + Stats - *@
     <div class="col-lg-4">
         <div class="card text-center">
             <div class="card-body p-4">
@@ -25,9 +25,14 @@
                 <div class="text-muted mt-1">@(Model.Position ?? "Nhân viên")</div>
                 <div class="mt-1">
                     @if (Model.Role == "Admin")
-                    { <span class="badge-pill purple">Admin</span> }
+                    {
+                        <span class="badge-pill purple">Admin</span>
+                    }
                     else
-                    { <span class="badge-pill info">Nhân viên</span> }
+                    {
+
+                        <span class="badge-pill info">Nhân viên</span>
+                    }
                 </div>
                 <div class="text-muted mt-2" style="font-size:.8rem">
                     📦 @deptName
@@ -38,7 +43,7 @@
             </div>
         </div>
 
-        {{* Stats *}}
+        @* Stats *@
         <div class="row g-2 mt-1">
             <div class="col-6">
                 <div class="card text-center p-3">
@@ -67,10 +72,10 @@
         </div>
     </div>
 
-    {{* ── Cột phải: Form chỉnh sửa + Đổi mật khẩu ─────────── *}}
+    @* - Cột phải: Form chỉnh sửa + Đổi mật khẩu - *@
     <div class="col-lg-8">
 
-        {{* Alert messages *}}
+        @* Alert messages *@
         @if (TempData["Success"] != null)
         {
             <div class="alert alert-success alert-dismissible fade show mb-3">
@@ -93,7 +98,7 @@
             </div>
         }
 
-        {{* Thông tin cá nhân *}}
+        @* Thông tin cá nhân *@
         <div class="card mb-4">
             <div class="card-header-bar">
                 <h5>👤 Thông tin cá nhân</h5>
@@ -152,7 +157,7 @@
             </div>
         </div>
 
-        {{* Đổi mật khẩu *}}
+        @* Đổi mật khẩu *@
         <div class="card">
             <div class="card-header-bar">
                 <h5>🔑 Đổi mật khẩu</h5>

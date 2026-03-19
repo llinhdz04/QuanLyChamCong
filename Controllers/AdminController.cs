@@ -175,6 +175,123 @@ namespace QuanLyChamCong.Controllers
             return RedirectToAction("Users");
         }
 
+        // ajax trả JSON danh sách nhân viên
+        public IActionResult GetUsersJson(string? search)
+        {
+            var role = HttpContext.Session.GetString("Role");
+            if (role != "Admin") return Forbid();
+
+            var query = _context.ApplicationUsers.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(u =>
+                    u.FullName!.ToLower().Contains(s) ||
+                    u.UserName.ToLower().Contains(s) ||
+                    u.Email.ToLower().Contains(s) ||
+                    (u.Position != null && u.Position.ToLower().Contains(s)));
+            }
+
+            var data = query
+                .OrderBy(u => u.FullName)
+                .Select(u => new {
+                    u.Id,
+                    u.UserName,
+                    u.FullName,
+                    u.Email,
+                    u.Position,
+                    u.Role
+                })
+                .ToList();
+
+            return Json(data);
+        }
+        //ajax xóa nv
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteUserAjax(string id)
+        {
+            var role = HttpContext.Session.GetString("Role");
+            if (role != "Admin")
+                return Json(new { success = false, message = "Không có quyền" });
+
+            var user = _context.ApplicationUsers.Find(id);
+            if (user == null)
+                return Json(new { success = false, message = "Không tìm thấy nhân viên" });
+
+            _context.ApplicationUsers.Remove(user);
+            _context.SaveChanges();
+            return Json(new { success = true, message = $"Đã xóa {user.FullName ?? user.UserName}" });
+        }
+
+        //ajax tạo nv
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateUserAjax(string userName, string email,
+                                             string password, string? fullName,
+                                             string? position, string? role2)
+        {
+            var role = HttpContext.Session.GetString("Role");
+            if (role != "Admin")
+                return Json(new { success = false, message = "Không có quyền" });
+
+            if (_context.ApplicationUsers.Any(u => u.UserName == userName))
+                return Json(new { success = false, message = "Tên đăng nhập đã tồn tại" });
+
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserName = userName,
+                Email = email,
+                Password = BCrypt.Net.BCrypt.HashPassword(password),
+                FullName = fullName,
+                Position = position,
+                Role = string.IsNullOrEmpty(role2) ? "User" : role2
+            };
+            _context.ApplicationUsers.Add(user);
+            _context.SaveChanges();
+            return Json(new { success = true, message = $"Đã thêm {user.FullName ?? user.UserName}" });
+        }
+
+        //Pagination AJAX – Skip/Take + gọi AJAX load trang
+        public IActionResult GetUsersPage(string? search, int page = 1)
+        {
+            var role = HttpContext.Session.GetString("Role");
+            if (role != "Admin") return Forbid();
+
+            const int PAGE_SIZE = 10;
+            var query = _context.ApplicationUsers.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(u =>
+                    u.FullName!.ToLower().Contains(s) ||
+                    u.UserName.ToLower().Contains(s));
+            }
+
+            int total = query.Count();                    
+            int totalPages = (int)Math.Ceiling(total / (double)PAGE_SIZE);
+            page = Math.Max(1, Math.Min(page, Math.Max(1, totalPages)));
+
+            var items = query
+                .OrderBy(u => u.FullName)
+                .Skip((page - 1) * PAGE_SIZE) 
+                .Take(PAGE_SIZE)                 
+                .Select(u => new {
+                    u.Id,
+                    u.UserName,
+                    u.FullName,
+                    u.Email,
+                    u.Position,
+                    u.Role
+                })
+                .ToList();
+
+            return Json(new { items, total, page, totalPages });
+        }
+
         // USER HOURS
         public IActionResult UserHours(
             string  id,
@@ -369,5 +486,7 @@ namespace QuanLyChamCong.Controllers
             ViewBag.TotalHours = reportList.Sum(r => r.TotalHours);
             return View(items);
         }
+
+
     }
 }

@@ -108,21 +108,15 @@
                 <div>
                     <div style="font-weight:700;font-size:.95rem">@ViewData["Title"]</div>
                     <div style="font-size:.75rem;color:var(--muted)">
-                        @System.Globalization.CultureInfo.GetCultureInfo("vi-VN")
-                            .DateTimeFormat.GetDayName(DateTime.Today.DayOfWeek).FirstOrDefault().ToString().ToUpper()
-                        @System.Globalization.CultureInfo.GetCultureInfo("vi-VN")
-                            .DateTimeFormat.GetDayName(DateTime.Today.DayOfWeek).Substring(1),
-                        @DateTime.Today.ToString("dd/MM/yyyy")
+                        @{ var dayName = System.Globalization.CultureInfo.GetCultureInfo("vi-VN").DateTimeFormat.GetDayName(DateTime.Today.DayOfWeek); }
+                        @(char.ToUpper(dayName[0]) + dayName.Substring(1)), @DateTime.Today.ToString("dd/MM/yyyy")
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:12px">
                     <a asp-controller="Notification" asp-action="Index"
                        style="position:relative;text-decoration:none;font-size:1.2rem" title="Thông báo">
                         🔔
-                        <span id="topbarBadge" style="display:none;position:absolute;top:-4px;right:-4px;
-                              background:var(--danger);color:#fff;border-radius:99px;
-                              font-size:.55rem;min-width:14px;height:14px;
-                              display:none;align-items:center;justify-content:center;font-weight:700"></span>
+                        <span id="topbarBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border-radius:99px;font-size:.55rem;min-width:14px;height:14px;align-items:center;justify-content:center;font-weight:700"></span>
                     </a>
                     <a asp-controller="Profile" asp-action="Index"
                        style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit">
